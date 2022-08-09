@@ -1,12 +1,13 @@
-// FiveWords.cpp : This file contains the 'main' function. Program execution begins and ends there.
-//
+// FiveWords.cpp : This file contains the 'main' function
+// The FiveWords program takes a list of 5-letter English words (or alleged words) without repeating letters
+// and prints list of 5-word combinations in which no letter is used more than once, for the total of 25
+// distinct letters in each combination
+// NOTE: 64-bit version performs slightly faster than 32-bit version
+
 
 #include <iostream>
 #include <vector>
-#include <map>
 #include <unordered_map>
-#include <algorithm>
-#include <limits.h>
 
 using namespace std;
 
