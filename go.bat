@@ -3,7 +3,8 @@
 
 set start=%time%
 
-FiveUniqueLetters\Release\FiveUniqueLetters.exe data\words_alpha.txt | FiveWords\x64\Release\FiveWords.exe > result.txt
+FiveUniqueLetters\Release\FiveUniqueLetters.exe data\words_alpha.txt | ^
+FiveWords\x64\Release\FiveWords.exe | sort > results/groups.txt
 
 set end=%time%
 set options="tokens=1-4 delims=:.,"
@@ -21,4 +22,6 @@ if %hours% lss 0 set /a hours = 24%hours%
 if 1%ms% lss 100 set ms=0%ms%
 
 set /a totalsecs = %hours%*3600 + %mins%*60 + %secs%
-echo command took %hours%:%mins%:%secs%.%ms% (%totalsecs%.%ms%s total)
+set MSG=command took %hours%:%mins%:%secs%.%ms% (%totalsecs%.%ms%s total) 
+echo %MSG%
+echo %MSG% >results/time.txt
