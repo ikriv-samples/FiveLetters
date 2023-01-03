@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FiveWordsCs
 {
@@ -46,6 +44,12 @@ namespace FiveWordsCs
             }
         }
 
+        // Convert a word to a bitmask representing its letters.
+        // Returns zero if the word is not of the right length.
+        // If the word has 5 different letters, the mask would have 5 bits on
+        // E.g. both 'dowry' and 'rowdy' would be represented as 
+        // ------zyxwvutsrqponmlkjihgfedcba
+        // 00000001010000100100000000001000
         private static int WordToMask(string word)
         {
             if (word.Length != EXPECTED_LENGTH) return 0;
@@ -60,9 +64,9 @@ namespace FiveWordsCs
             return result;
         }
 
+        // Insert a new item into a mapping from key to a list of items
         private static void Insert<T>(Dictionary<int, List<T>> mapIntToList, int key, T val)
         {
-            //var existing_list = 
             mapIntToList.TryGetValue(key, out List<T> existingList);
             if (existingList != null)
             {
@@ -74,6 +78,7 @@ namespace FiveWordsCs
             }
         }
 
+        // Create a mapping from bitmask to a list of words (see WordToMask)
         private static WordMap BuildWordMap(IEnumerable<string> words)
         {
             var maskToWords = new Dictionary<int, List<string>>();
@@ -97,23 +102,49 @@ namespace FiveWordsCs
             }
         }
 
+        // N-sequence map is a map from a mask to a list of pairs (head_mask, tail_mask).
+        // Each key represents a bitmask for a sequence of N non-colliding words.
+        // The key is mapped to a list of pairs. Each pair contains a bitmask for the head word, and a bitmask for a tail of length N-1
+        //
+        // combined_mask->[(head_mask1, tail_mask1), (head_mask2, tail_mask2), ...]
+        // For each i head_maski | tail_maski == combined_mask, and head_maski & tail_maski == 0
+        //
+        // The nand function takes an N-sequence map inputMap and returns an N+1-sequence map, 
+        // in which head word masks are taken from wordMask, and tail masks are taken from the keys of inputMap.
+        // This simulates adding a new non-collding word in front of an existing word sequence.
         private static MaskToPairMap Nand(MaskToPairMap inputMap, IEnumerable<int> wordMasks)
         {
             var outputMap = new MaskToPairMap();
-            foreach (var input_mask in inputMap.Keys)
+            foreach (var inputMask in inputMap.Keys)
             {
-                foreach (var word_mask in wordMasks)
+                foreach (var wordMask in wordMasks)
                 {
-                    if ((input_mask & word_mask) == 0)
+                    if ((inputMask & wordMask) == 0)
                     {
-                        var output_mask = input_mask | word_mask;
-                        Insert(outputMap, output_mask, new MaskPair(word_mask, input_mask));
+                        var output_mask = inputMask | wordMask;
+                        Insert(outputMap, output_mask, new MaskPair(wordMask, inputMask));
                     }
                 }
             }
             return outputMap;
         }
 
+        // pairMaps argument is an a list of word sequence maps
+        // pairMaps[0] is a dummy map
+        // pairMaps[1] is a 1-sequence map
+        // pairMaps[2] is a 2-sequence map
+        // ...
+        // pairMaps[5] is a 5-sequence map
+        //
+        // maskToWords arguemnt is a map from a bitmask to a list of words
+        // prefix argument is a list of strings that contains known prefix of the non-colliding sequence, maybe empty.
+        // mask argument is a bitmask of the suffix
+        // 
+        // If the prefix is of length 5, it contains the entire sequence, and the function simply prints it
+        // If the prefix is shorter, the function looks up possible head words for the suffix in the values of pairMaps[n],
+        // where n is the suffix length (aka "level").
+        // It then appends the head word to the prefix and calls print_words_impl() recursively to handle the remaining suffix.
+        //
         private static void PrintWordsImpl(List<MaskToPairMap> pairMaps, WordMap maskToWords, List<string> prefix, int mask)
         {
             int level = NUM_WORDS - prefix.Count;
@@ -141,6 +172,14 @@ namespace FiveWordsCs
             }
         }
 
+        // Prints word sequences encoded in pairMaps
+        // pairMaps argument is an a list of word sequence maps
+        // pairMaps[0] is a dummy map
+        // pairMaps[1] is a 1-sequence map
+        // pairMaps[2] is a 2-sequence map
+        // ...
+        // pairMaps[5] is a 5-sequence map
+        // maskToWords argument maps bitmasks to list of words
         private static void PrintWords(List<MaskToPairMap> pairMaps, WordMap maskToWords)
         {
             var prefix = new List<string>();
@@ -160,8 +199,10 @@ namespace FiveWordsCs
             maskToWords.Remove(0);
             Console.Error.WriteLine($"{maskToWords.Count} unique keys");
 
+            // start with a dummy map
             var pairMaps = new List<MaskToPairMap> { new MaskToPairMap { { 0, new List<MaskPair> { (0, 0) } } } };
 
+            // for each i, build an i-sequence word map (see comment for 'Nand()')
             for (int i=1; i<=NUM_WORDS; ++i)
             {
                 var newMap = Nand(pairMaps[pairMaps.Count-1], maskToWords.Keys);
@@ -169,6 +210,7 @@ namespace FiveWordsCs
                 pairMaps.Add(newMap);
             }
 
+            // Print the words encoded in the series of maps
             PrintWords(pairMaps, maskToWords);
         }
     }
