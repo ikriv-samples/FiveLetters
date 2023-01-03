@@ -24,6 +24,12 @@ void read_input(istream& input, vector<string>& words) {
 	}
 }
 
+// Convert a word to a bitmask representing its letters.
+// Returns zero if the word is not of the right length.
+// If the word has 5 different letters, the mask would have 5 bits on
+// E.g. both 'dowry' and 'rowdy' would be represented as 
+// ------zyxwvutsrqponmlkjihgfedcba
+// 00000001010000100100000000001000
 int word_to_mask(string& word) {
 	if (word.length() != EXPECTED_LENGTH) return 0;
 	int result = 0;
@@ -33,7 +39,7 @@ int word_to_mask(string& word) {
 			return 0; // invalid letter
 		}
 		auto bit = (1 << letter);
-		if (result & bit) return 0;
+		if (result & bit) return 0; // a letter occurred twice
 		result |= bit;
 	}
 
@@ -42,6 +48,7 @@ int word_to_mask(string& word) {
 
 typedef unordered_map<int, vector<string>> word_map;
 
+// Insert a new item into a mapping from key to a list of items
 template<typename T>
 void insert(unordered_map<int, vector<T>>& map, int key, T const& value) {
 	auto it = map.find(key);
@@ -53,6 +60,7 @@ void insert(unordered_map<int, vector<T>>& map, int key, T const& value) {
 	}
 }
 
+// Create a mapping from bitmask to a list of words (see word_to_mask)
 void build_words_map(vector<string>& words, word_map& mask_to_words) {
 	for (auto word : words) {
 		if (word.length() == 0) continue;
@@ -82,6 +90,16 @@ void get_unique_keys(unordered_map<int, T> const& map, vector<int>& keys) {
 typedef pair<int, int> mask_pair;
 typedef unordered_map<int, vector<mask_pair>> mask_to_pair_map;
 
+// N-sequence map is a map from a mask to a list of pairs (head_mask, tail_mask).
+// Each key represents a bitmask for a sequence of N non-colliding words.
+// The key is mapped to a list of pairs. Each pair contains a bitmask for the head word, and a bitmask for a tail of length N-1
+//
+// combined_mask->[(head_mask1, tail_mask1), (head_mask2, tail_mask2), ...]
+// For each i head_maski | tail_maski == combined_mask, and head_maski & tail_maski == 0
+//
+// The nand function takes an N-sequence map input_map and builds an N+1-sequence map output_map, 
+// in which head word masks are taken from word_masks, and tail masks are taken from the keys of input_map.
+// This simulates adding a new non-collding word in front of an existing word sequence.
 void nand(mask_to_pair_map const& input_map, vector<int> const& word_masks, mask_to_pair_map& output_map) {
 	for (auto entry : input_map) {
 		const int input_mask = entry.first;
@@ -94,6 +112,21 @@ void nand(mask_to_pair_map const& input_map, vector<int> const& word_masks, mask
 	}
 }
 
+// pair_maps argument is an a list of word sequence maps
+// pair_maps[0] is a dummy map
+// pair_maps[1] is a 1-sequence map
+// pair_maps[2] is a 2-sequence map
+// ...
+// pair_maps[5] is a 5-sequence map
+//
+// mask_to_words arguemnt is a map from a bitmask to a list of words
+// prefix argument is a list of strings that contains known prefix of the non-colliding sequence, maybe empty.
+// mask argument is a bitmask of the suffix
+// 
+// If the prefix is of length 5, it contains the entire sequence, and the function simply prints it
+// If the prefix is shorter, the function looks up possible head words for the suffix in the values of pair_maps[n],
+// where n is the suffix length (aka "level").
+// It then appends the head word to the prefix and calls print_words_impl() recursively to handle the remaining suffix.
 void print_words_impl(mask_to_pair_map* pair_maps, word_map const& mask_to_words, vector<string>& prefix, int mask) {
 	const int level = NUM_WORDS - int(prefix.size());
 	if (level == 0) {
@@ -135,6 +168,14 @@ void print_words_impl(mask_to_pair_map* pair_maps, word_map const& mask_to_words
 	}
 }
 
+// Prints word sequences encoded in pair_maps
+// pair_maps argument is an a list of word sequence maps
+// pair_maps[0] is a dummy map
+// pair_maps[1] is a 1-sequence map
+// pair_maps[2] is a 2-sequence map
+// ...
+// pair_maps[5] is a 5-sequence map
+// mask_to_words argument maps bitmasks to list of words
 void print_words(mask_to_pair_map* pair_maps, word_map const& mask_to_words) {
 	vector<string> prefix;
 	for (auto entry : pair_maps[NUM_WORDS]) {
@@ -158,12 +199,16 @@ int main()
 	cerr << keys.size() << " unique keys" << endl;
 
 	mask_to_pair_map pair_maps[NUM_WORDS+1];
+	// start with a dummy map
 	pair_maps[0].insert({ 0,{{0,0}} });
+
+	// for each i, build an i-sequence word map (see comment for 'Nand()')
 	for (int i = 1; i <= NUM_WORDS; ++i) {
 		nand(pair_maps[i-1], keys, pair_maps[i]);
 		cerr << pair_maps[i].size() << " groups of size " << i << endl;
 	}
 
+	// Print the words encoded in the series of maps
 	print_words(pair_maps, mask_to_words);
 
 	return 0;
