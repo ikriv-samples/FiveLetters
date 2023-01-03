@@ -106,7 +106,7 @@ def main():
     del mask_to_words[0]
   print_stderr(f"{len(mask_to_words)} unique keys")
   
-  pair_maps = [{ 0 : (0,0) }]
+  pair_maps = [{ 0 : [(0,0)] }]
 
   for i in range(1, NUM_WORDS+1):
     new_map = nand(pair_maps[-1], mask_to_words.keys())
